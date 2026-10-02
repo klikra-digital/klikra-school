@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KLIKRA Attendance V1.1</title>
+<style>
+:root{--green:#0B3D2E;--lime:#A7E22E;--cream:#F9F6EA;--black:#1A1A1A;--gray:#687290;--white:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--black)}
+header{background:var(--green);color:white;padding:18px 20px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:800;letter-spacing:.8px}.pill{background:var(--lime);color:var(--green);padding:7px 12px;border-radius:999px;font-size:12px;font-weight:700}
+main{max-width:1000px;margin:auto;padding:20px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+select,button{border:1px solid #d8dccf;border-radius:12px;padding:11px 14px;font:inherit;background:white}
+button.primary{background:var(--green);color:white;border-color:var(--green);font-weight:700;cursor:pointer}
+button.secondary{background:white;cursor:pointer}.grid{display:grid;grid-template-columns:1fr 300px;gap:18px}
+.card{background:white;border:1px solid #e6e7df;border-radius:18px;padding:18px;box-shadow:0 8px 25px #0b3d2e12}
+h1{margin:0 0 6px;font-size:25px}h2{font-size:17px;margin:0 0 14px}.muted{color:var(--gray);font-size:13px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0e8;font-size:14px}
+.status{display:flex;gap:6px;flex-wrap:wrap}.status button{padding:7px 9px;font-size:12px}.status .on{background:var(--lime);border-color:var(--lime);color:var(--green);font-weight:800}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:16px 0}.stat{background:#f7f8f2;border-radius:14px;padding:12px}.num{font-size:22px;font-weight:800}.label{font-size:11px;color:var(--gray)}
+.progress{height:10px;background:#edf0e8;border-radius:99px;overflow:hidden}.bar{height:100%;background:var(--lime);width:0}
+.notice{padding:12px;border-radius:12px;background:#f7f8f2;margin-top:12px;font-size:13px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}th:nth-child(1),td:nth-child(1){display:none}}
+</style>
+</head>
+<body>
+<header><div class="logo">KLIKRA SCHOOL · ATTENDANCE</div><div class="pill">V1.1 DEMO</div></header>
+<main>
+  <div style="margin:18px 0">
+    <h1>Absensi Siswa</h1>
+    <div class="muted">Simulasi alur guru: pilih kelas → isi absensi → simpan → lihat rekap.</div>
+  </div>
+  <div class="toolbar">
+    <select id="classSelect"><option value="7A">Kelas 7A</option><option value="7B">Kelas 7B</option><option value="8A">Kelas 8A</option></select>
+    <input id="date" type="date" style="border:1px solid #d8dccf;border-radius:12px;padding:11px 14px">
+    <button class="primary" onclick="saveAttendance()">Simpan Absensi</button>
+    <button class="secondary" onclick="resetAll()">Reset Demo</button>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <h2 id="classTitle">Kelas 7A</h2>
+      <div class="stats">
+        <div class="stat"><div class="num" id="hadir">0</div><div class="label">HADIR</div></div>
+        <div class="stat"><div class="num" id="izin">0</div><div class="label">IZIN</div></div>
+        <div class="stat"><div class="num" id="sakit">0</div><div class="label">SAKIT</div></div>
+        <div class="stat"><div class="num" id="alpa">0</div><div class="label">ALPA</div></div>
+      </div>
+      <table><thead><tr><th>No</th><th>Nama Siswa</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table>
+      <div class="notice" id="msg">Belum disimpan. Ini masih data demo lokal.</div>
+    </section>
+    <aside class="card">
+      <h2>Kelengkapan Absensi</h2>
+      <div class="num" id="percent">0%</div>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div class="notice">
+        <b>Catatan V1.1</b><br><br>
+        Data tersimpan di browser untuk simulasi. Belum ada database online dan belum cocok untuk data siswa sebenarnya.
+      </div>
+      <div class="notice">
+        <b>Alur produksi berikutnya</b><br><br>
+        Guru → Auth → School ID → Class → Student → Attendance → RLS → Rekap.
+      </div>
+    </aside>
+  </div>
+</main>
+<script>
+const names={
+"7A":["Ahmad Fauzan","Aisyah Rahma","Bima Pratama","Citra Nabila","Dafa Maulana","Faris Akbar","Hana Putri","Ilham Ramadhan"],
+"7B":["Arman Hadi","Bella Safitri","Dimas Rizky","Fikri Anwar","Laila Zahra","Nadia Putri","Raka Aditya","Salsa Nuri"],
+"8A":["Aldi Saputra","Anisa Karimah","Bagas Wijaya","Dina Aulia","Fauzan Hakim","Gita Maharani","Rian Kurnia","Siti Maryam"]
+};
+let data=JSON.parse(localStorage.getItem("klikraAttendance")||"{}");
+const date=document.getElementById("date"); date.value=new Date().toISOString().slice(0,10);
+function key(){return document.getElementById("classSelect").value+"_"+date.value}
+function render(){
+ const cls=document.getElementById("classSelect").value, saved=data[key()]||{};
+ document.getElementById("classTitle").textContent="Kelas "+cls;
+ const rows=document.getElementById("rows"); rows.innerHTML="";
+ names[cls].forEach((n,i)=>{
+   const s=saved[i]||"Hadir";
+   const tr=document.createElement("tr");
+   tr.innerHTML=`<td>${i+1}</td><td>${n}</td><td><div class="status">
+   ${["Hadir","Izin","Sakit","Alpa"].map(x=>`<button class="${s===x?"on":""}" onclick="setStatus(${i},'${x}')">${x}</button>`).join("")}
+   </div></td>`;
+   rows.appendChild(tr);
+ });
+ updateStats();
+}
+function setStatus(i,s){const k=key(); data[k]=data[k]||{}; data[k][i]=s; render();}
+function updateStats(){
+ const cls=document.getElementById("classSelect").value, saved=data[key()]||{}, vals=names[cls].map((_,i)=>saved[i]||"Hadir");
+ ["Hadir","Izin","Sakit","Alpa"].forEach(x=>document.getElementById(x.toLowerCase()).textContent=vals.filter(v=>v===x).length);
+ const pct=Math.round(vals.filter(Boolean).length/vals.length*100);
+ document.getElementById("percent").textContent=pct+"%";document.getElementById("bar").style.width=pct+"%";
+}
+function saveAttendance(){localStorage.setItem("klikraAttendance",JSON.stringify(data));document.getElementById("msg").textContent="✓ Absensi tersimpan di browser pada "+new Date().toLocaleTimeString("id-ID")+". Ini masih simulasi."; }
+function resetAll(){if(confirm("Reset semua data demo?")){data={};localStorage.removeItem("klikraAttendance");render();document.getElementById("msg").textContent="Data demo sudah direset.";}}
+document.getElementById("classSelect").addEventListener("change",render);date.addEventListener("change",render);render();
+</script>
+</body></html>
